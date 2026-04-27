@@ -1,0 +1,13 @@
+# 1) compile (if you have a pom with akka.version, override from CLI)
+mvn --% -U clean compile -Dakka.version=2.8.5
+
+# 2) build runtime classpath file
+mvn --% -q -Dakka.version=2.8.5 -DincludeScope=runtime dependency:build-classpath -Dmdep.outputFile=cp.txt
+$cp = Get-Content .\cp.txt -Raw
+
+# 3) ensure slf4j-api 2.x wins (prevents NOP logger)
+$M2 = "$env:USERPROFILE\.m2\repository"
+$slfapi20 = "$M2\org\slf4j\slf4j-api\2.0.15\slf4j-api-2.0.15.jar"
+
+# 4) run the main class of this example
+java -cp "target\classes;$slfapi20;$cp" com.faultTolerance.counter.CounterSupervisor

@@ -1,0 +1,41 @@
+# Build outputs
+target/
+build/
+out/
+dist/
+*.class
+*.jar
+*.war
+*.ear
+
+# Native binaries and object files
+*.o
+*.d
+*.so
+*.dll
+*.exe
+local_minima
+
+# IDE and OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+*.tmp
+
+# Node-RED local runtime data
+.node-red/
+node_modules/
+package-lock.json
+
+# Spark generated/checkpoint data
+metastore_db/
+spark-warehouse/
+checkpoint/
+

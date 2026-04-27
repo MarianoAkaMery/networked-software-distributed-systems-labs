@@ -1,0 +1,547 @@
+[
+    {
+        "id": "b156758da18eca8a",
+        "type": "tab",
+        "label": "EvaluationLab3 - Group36",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "e145681d1fc7e143",
+        "type": "chatbot-telegram-node",
+        "botname": "Node-RED Lab",
+        "usernames": "",
+        "polling": "1000",
+        "store": "",
+        "log": "",
+        "debug": false,
+        "skipMediaFiles": false,
+        "webHook": "",
+        "connectMode": "polling",
+        "storeMessages": true,
+        "enableMissionControl": false,
+        "inspectMessages": true,
+        "chatbotId": ""
+    },
+    {
+        "id": "fd8126612034f350",
+        "type": "chatbot-telegram-node",
+        "botname": "nodered_lab_hr_bot",
+        "usernames": "",
+        "polling": 1000,
+        "store": "",
+        "log": "",
+        "debug": false,
+        "skipMediaFiles": false,
+        "webHook": "",
+        "connectMode": "polling",
+        "storeMessages": true,
+        "enableMissionControl": false,
+        "inspectMessages": true,
+        "chatbotId": ""
+    },
+    {
+        "id": "parse_command",
+        "type": "function",
+        "z": "b156758da18eca8a",
+        "name": "Parse Command",
+        "func": "let text = msg.originalMessage.text.trim();\nlet parts = text.split(/\\s+/);\nlet cmd = parts[0].toUpperCase();\n\nmsg.userId = msg.originalMessage.from.id;\n\nif (cmd === \"QUERY\" || cmd === \"TRACK\") {\n    msg.location = {\n        city: parts[1],\n        country: parts[2]\n    };\n}\n\nswitch (cmd) {\n    case \"QUERY\":\n        msg.command = \"QUERY\";\n        return [msg, null, null];\n\n    case \"TRACK\":\n        msg.command = \"TRACK\";\n        return [null, msg, null];\n\n    case \"REPORT\":\n        msg.command = \"REPORT\";\n        return [null, null, msg];\n\n    default:\n        msg.payload = \"Unknown command\";\n        return [msg, null, null];\n}\n",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 210,
+        "y": 380,
+        "wires": [
+            [
+                "build_query_url"
+            ],
+            [
+                "track_location"
+            ],
+            [
+                "report_user"
+            ]
+        ]
+    },
+    {
+        "id": "build_query_url",
+        "type": "function",
+        "z": "b156758da18eca8a",
+        "name": "Build Weather URL (QUERY)",
+        "func": "let text = msg.originalMessage.text.trim();\nlet parts = text.split(/\\s+/);   // [\"QUERY\",\"Milan\",\"IT\"]\n\nmsg.command = parts[0].toUpperCase();\nmsg.location = {\n    city: parts[1],\n    country: parts[2]\n};\n\nreturn msg;  \n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 260,
+        "wires": [
+            [
+                "bc5986b601f7610b",
+                "14bbeb72651cf3e0"
+            ]
+        ]
+    },
+    {
+        "id": "track_location",
+        "type": "function",
+        "z": "b156758da18eca8a",
+        "name": "Track Location",
+        "func": "let tracks = flow.get('tracks') || {};\nlet userTracks = tracks[msg.userId] || [];\n\nuserTracks.push({\n    city: msg.location.city,\n    country: msg.location.country\n});\n\ntracks[msg.userId] = userTracks;\nflow.set('tracks', tracks);\n\n// You can either let the chatbot-message build the reply from msg.location\n// or keep this payload, both are fine.\nmsg.payload = `Tracking temperature for ${msg.location.city}!`;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 520,
+        "y": 380,
+        "wires": [
+            [
+                "a1fc7b7ac8aacdf1",
+                "18bc17bcfa8bd1a9"
+            ]
+        ]
+    },
+    {
+        "id": "report_user",
+        "type": "function",
+        "z": "b156758da18eca8a",
+        "name": "Prepare REPORT list",
+        "func": "let tracks = flow.get('tracks') || {};\nlet userTracks = tracks[msg.userId] || [];\n\n// Split node will iterate over this array\nmsg.payload = userTracks;\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 560,
+        "wires": [
+            [
+                "split_locations",
+                "cd2fa95cf4eb8068"
+            ]
+        ]
+    },
+    {
+        "id": "split_locations",
+        "type": "split",
+        "z": "b156758da18eca8a",
+        "name": "Split Locations",
+        "splt": "",
+        "spltType": "str",
+        "arraySplt": "1",
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "payload",
+        "x": 740,
+        "y": 520,
+        "wires": [
+            [
+                "format_query_response",
+                "645dd89d698e0829"
+            ]
+        ]
+    },
+    {
+        "id": "collect_report",
+        "type": "function",
+        "z": "b156758da18eca8a",
+        "name": "Collect REPORT Data",
+        "func": "// In node-red-node-openweathermap, temperature in °C is msg.payload.tempc\nlet temp = msg.payload.tempc;\n\n// Location object set earlier: msg.location = { city, country }\nlet city = msg.location.city;\n\n// Build one line of output\nlet entry = `The temperature in ${city} is ${temp}°C!`;\n\n// Collect all lines (Join node will merge them)\nmsg.payload = entry;\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1560,
+        "y": 420,
+        "wires": [
+            [
+                "join_reports"
+            ]
+        ]
+    },
+    {
+        "id": "join_reports",
+        "type": "join",
+        "z": "b156758da18eca8a",
+        "name": "Join Results",
+        "mode": "custom",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "",
+        "joiner": "",
+        "joinerType": "str",
+        "useparts": true,
+        "accumulate": false,
+        "timeout": "",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 1850,
+        "y": 420,
+        "wires": [
+            [
+                "send_report",
+                "aa58a31ff18b0c9b"
+            ]
+        ]
+    },
+    {
+        "id": "send_report",
+        "type": "function",
+        "z": "b156758da18eca8a",
+        "name": "Format REPORT Output",
+        "func": "if (Array.isArray(msg.payload)) {\n    msg.payload = msg.payload.join(\"\\n\");\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2110,
+        "y": 460,
+        "wires": [
+            [
+                "3fe1436771c962ba",
+                "63d6c08baac2ff0d"
+            ]
+        ]
+    },
+    {
+        "id": "3b90b326ba774557",
+        "type": "chatbot-telegram-receive",
+        "z": "b156758da18eca8a",
+        "bot": "fd8126612034f350",
+        "botProduction": "",
+        "x": 150,
+        "y": 180,
+        "wires": [
+            [
+                "parse_command",
+                "c4bd821b24004c4e"
+            ]
+        ]
+    },
+    {
+        "id": "b1b48f6f22209325",
+        "type": "chatbot-telegram-send",
+        "z": "b156758da18eca8a",
+        "bot": "fd8126612034f350",
+        "botProduction": "fd8126612034f350",
+        "track": false,
+        "passThrough": false,
+        "errorOutput": false,
+        "outputs": 0,
+        "x": 2510,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "c4bd821b24004c4e",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 420,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "bc5986b601f7610b",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "a1fc7b7ac8aacdf1",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "Tracking Debug",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "cd2fa95cf4eb8068",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "debug 5",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "65c5aa72b9240fd6",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "debug 6",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1400,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "14bbeb72651cf3e0",
+        "type": "openweathermap",
+        "z": "b156758da18eca8a",
+        "name": "Sensor provider",
+        "wtype": "current",
+        "lon": "",
+        "lat": "",
+        "city": "",
+        "country": "",
+        "language": "en",
+        "x": 1040,
+        "y": 260,
+        "wires": [
+            [
+                "65c5aa72b9240fd6",
+                "50705fc352210364"
+            ]
+        ]
+    },
+    {
+        "id": "format_query_response",
+        "type": "function",
+        "z": "b156758da18eca8a",
+        "name": "Format QUERY Response",
+        "func": "// convert payload into msg.location for the openweather node\nmsg.location = {\n    city: msg.payload.city,\n    country: msg.payload.country\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1000,
+        "y": 480,
+        "wires": [
+            [
+                "99bdef70f8113cc7",
+                "37161e9747f09699"
+            ]
+        ]
+    },
+    {
+        "id": "50705fc352210364",
+        "type": "chatbot-message",
+        "z": "b156758da18eca8a",
+        "name": "QUERY REPLY BUILDER",
+        "message": [
+            {
+                "message": "The temperature in {{msg.location.city}} is {{msg.payload.tempc}}C!;\n"
+            }
+        ],
+        "language": "none",
+        "x": 1410,
+        "y": 300,
+        "wires": [
+            [
+                "b1b48f6f22209325"
+            ]
+        ]
+    },
+    {
+        "id": "18bc17bcfa8bd1a9",
+        "type": "chatbot-message",
+        "z": "b156758da18eca8a",
+        "name": "TRACK REPLY BUILDER",
+        "message": [
+            {
+                "message": "Tracking temperature for {{msg.location.city}}"
+            }
+        ],
+        "language": "none",
+        "x": 1130,
+        "y": 380,
+        "wires": [
+            [
+                "b1b48f6f22209325"
+            ]
+        ]
+    },
+    {
+        "id": "3fe1436771c962ba",
+        "type": "chatbot-message",
+        "z": "b156758da18eca8a",
+        "name": "REPORT REPLY BUILDER",
+        "message": [
+            {
+                "message": ""
+            }
+        ],
+        "language": "none",
+        "x": 2480,
+        "y": 500,
+        "wires": [
+            [
+                "b1b48f6f22209325"
+            ]
+        ]
+    },
+    {
+        "id": "37161e9747f09699",
+        "type": "openweathermap",
+        "z": "b156758da18eca8a",
+        "name": "Sensor provider",
+        "wtype": "current",
+        "lon": "",
+        "lat": "",
+        "city": "",
+        "country": "",
+        "language": "en",
+        "x": 1280,
+        "y": 440,
+        "wires": [
+            [
+                "collect_report",
+                "766ff144d8851cb8"
+            ]
+        ]
+    },
+    {
+        "id": "645dd89d698e0829",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "debug SPLIT",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 970,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "766ff144d8851cb8",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "RESULT FROM REPORT WEATHER",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1670,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "99bdef70f8113cc7",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "debug before weather",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1260,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "aa58a31ff18b0c9b",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "JOIN",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 2030,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "63d6c08baac2ff0d",
+        "type": "debug",
+        "z": "b156758da18eca8a",
+        "name": "REPORT OUTPUT FUNCTION",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 2390,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "590abc4a7b0da228",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-chatbot": "1.2.4",
+            "node-red-node-openweathermap": "1.0.1"
+        }
+    }
+]

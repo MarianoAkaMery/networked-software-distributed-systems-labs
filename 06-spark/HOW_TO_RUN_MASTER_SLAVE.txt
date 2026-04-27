@@ -1,0 +1,53 @@
+1️⃣ Recompile and build the JAR (after editing Java)
+
+From PowerShell or CMD:
+
+cd C:\Users\maria\Desktop\SparkEvalStudy
+mvn clean package
+
+
+This regenerates:
+
+C:\Users\maria\Desktop\SparkEvalStudy\target\spark_tutorial-1.0.jar
+
+2️⃣ Start the Spark master
+
+Open CMD window #1:
+
+cd C:\Users\maria\Desktop\spark-4.0.1-bin-hadoop3
+bin\spark-class.cmd org.apache.spark.deploy.master.Master
+
+
+Leave this window open.
+
+Master UI: http://localhost:8080
+
+3️⃣ Start the Spark worker
+
+Open CMD window #2:
+
+cd C:\Users\maria\Desktop\spark-4.0.1-bin-hadoop3
+bin\spark-class.cmd org.apache.spark.deploy.worker.Worker spark://127.0.0.1:7077
+
+
+Leave this window open too.
+
+4️⃣ Submit your application
+
+Open CMD window #3 (or reuse one if you stop it):
+
+cd C:\Users\maria\Desktop\spark-4.0.1-bin-hadoop3
+bin\spark-submit.cmd --class it.polimi.spark.batch.bank.Bank C:\Users\maria\Desktop\SparkEvalStudy\target\spark_tutorial-1.0.jar
+
+
+That’s the full cycle:
+
+Edit Java
+
+mvn clean package
+
+(Start master + worker if not already running)
+
+spark-submit with the same JAR path
+
+You can just repeat those steps every time you change the code.
